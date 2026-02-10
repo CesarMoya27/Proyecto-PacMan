@@ -1,0 +1,83 @@
+from load_functions import *
+from pathlib import Path
+
+#Constantes de tamaño:
+    #Tamaño de la ventana:
+ANCHO_VENT=800
+ALTO_VENT=600
+    #Tamaño del personaje:
+SCALE_P=1.7
+SCALE_G=2
+    #Tamaño de los fantasmas:
+ESCALA_F=2
+GHOST_SPEED=2
+    #Tamaño de las paredes:
+WALL_SIZE=32
+    #Monedas:
+COIN_SIZE=8
+COIN_SCORE=10
+COIN_COLOR=(255, 165, 0)
+
+#Colisiones:
+SLIDE_SPEED=1
+
+#Colores:
+    #Color del personaje:
+COLOR_P=(255, 255, 0)
+    #Color de las paredes:
+WALL_COLOR=(33, 33, 255)
+    #Otros:
+BLACK=(0, 0, 0)
+WHITE=(255, 255, 255)
+RED=(255, 0, 0)
+
+    #Estados del juego:
+PLAYING='playing'
+GAME_OVER='game_over'
+INTRO='intro'
+VICTORY='victory'
+
+    #Volumen:
+MUSIC_VOL=0.5
+SOUND_VOL=0.3
+MUSIC='pacman.mp3'
+SOUND='waka_waka.mp3'
+DIES='pacman_dies.mp3'
+
+#Varias:
+FPS=60
+SPEED=3
+
+RIGHT=0
+LEFT=1
+UP=2
+DOWN=3
+
+NIVEL=[
+    "1111111111111111111111111",
+    "100000000000P000000B00001",
+    "1011111111110111111111101",
+    "1010000000010100000000001",
+    "1010111101011101111111101",
+    "1010100100001000000001101",
+    "1010101101101011101100001",
+    "1010101101001001101101111",
+    "00001011010111011011000I0",
+    "1010101101000000001101101",
+    "1010101101101111101101101",
+    "1C10100000000000000001101",
+    "1010101111111111111101101",
+    "1010100000000000000000001",
+    "1010111111110111110101101",
+    "10100000R0000000000100101",
+    "1011111111110111010111101",
+    "1000000000000000010000001",
+    "1111111111111111111111111",
+]
+
+
+GAME_DIR=Path(__file__).resolve().parent
+ASSETS_DIR=GAME_DIR/"assets"
+TITLE_DIR=ASSETS_DIR/"pacman.png"
+SOUNDS_DIR=ASSETS_DIR/"music"
+
