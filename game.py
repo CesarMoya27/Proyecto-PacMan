@@ -17,9 +17,9 @@ class Game:
         self.game_state=INTRO
 
         #Cargar los sonidos:
-        self.music=load_sound(SOUNDS_DIR, 1)
         self.sound=load_sound(SOUNDS_DIR)
-        self.dies=load_sound(SOUNDS_DIR,2)
+        self.music=load_sound(SOUNDS_DIR, 1)
+        self.dies=load_sound(SOUNDS_DIR, 2)
         self.dead=False
 
         #Ajustar el volumen:
@@ -30,8 +30,14 @@ class Game:
         #Crear al jugador:
         self.coins=[]
         self.walls=[]
+        self.ghosts=[]
         self.score=0
         self.create_level()
+
+        #Variables para el power-up:
+        self.power_up_timer=0
+        self.power_up_dur=10000
+        self.power_up_active=False
 
         #Fuente para el texto:
         self.font=pygame.font.Font(None, 36)
@@ -73,7 +79,7 @@ class Game:
 
     #Pantalla de victoria:
     def show_victory_screen(self):
-        victory_text=self.font_big.render('VICTORIA', True, COLOR_P)
+        victory_text=self.font_big.render('VICTORIA', True, YELLOW)
         score_text=self.font_big.render(f'Puntaje: {self.score}', True, WHITE)
         restart_text=self.font.render('Presione ESPACIO para jugar de nuevo', True, WHITE)
 
@@ -105,6 +111,29 @@ class Game:
                     self.inky=Inky(i_col, i_fila)                                  
                 elif col=="C":
                     self.clyde=Clyde(i_col, i_fila)
+                elif col=="M":
+                    self.coins.append(Coin(i_col, i_fila, True))
+
+        self.ghosts.append(self.blinky)
+        self.ghosts.append(self.pinky)
+        self.ghosts.append(self.inky)
+        self.ghosts.append(self.clyde)
+
+    #Para activar el power-up:
+    def activate_power_up(self):
+        self.power_up_active=True
+        self.power_up_timer=pygame.time.get_ticks()
+        for ghost in self.ghosts:
+            ghost.vulnerable_state(True)
+
+    #Actualizar el estado del power_up:
+    def update_power_up(self):
+        if self.power_up_active:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.power_up_timer>self.power_up_dur:
+                self.power_up_active=False
+                for ghost in self.ghosts:
+                    ghost.vulnerable_state(False)
 
     #Manejar los eventos del juego:
     def handle_events(self):
@@ -125,12 +154,19 @@ class Game:
     def update(self):
         if self.game_state in [GAME_OVER, VICTORY]:
             self.sound.stop()
+            self.ghosts=[]
+            self.coins=[]
 
         if self.game_state==PLAYING:
             self.player.update(self.walls)
+            for ghost in self.ghosts:
+                ghost.update(self.walls)
             self.music.stop()
             self.dies.stop()
             self.dead=False
+        
+            #Actualizar el power-up:
+            self.update_power_up()
 
             #Manejar sonidos de movimiento:
             if self.player.is_moving and not self.player.was_moving:
@@ -140,21 +176,22 @@ class Game:
 
             for coin in self.coins[:]:
                 if self.player.rect.colliderect(coin.rect):
+                    if isinstance(coin, Coin) and coin.big:
+                        self.activate_power_up()
                     self.coins.remove(coin)
                     self.score+=COIN_SCORE
                     if len(self.coins)==0:
                         self.game_state=VICTORY
 
-        self.blinky.update(self.walls)
-        self.pinky.update(self.walls)
-        self.inky.update(self.walls)
-        self.clyde.update(self.walls)
-
-        if self.player.rect.colliderect(self.blinky.rect) or self.player.rect.colliderect(self.pinky.rect) or self.player.rect.colliderect(self.inky.rect) or self.player.rect.colliderect(self.clyde.rect):
-            self.game_state=GAME_OVER
-            if not self.dead:
-                self.dies.play()
-                self.dead=True
+        for ghost in self.ghosts:
+            if self.player.rect.colliderect(ghost.rect):
+                if ghost.vulnerable:
+                    ghost.hide()
+                else:
+                    self.game_state=GAME_OVER
+                    if not self.dead:
+                        self.dies.play()
+                        self.dead=True
 
     def draw(self):
         #Llenar de negro el fondo:
@@ -180,12 +217,16 @@ class Game:
             score_text=self.font.render(f'Puntaje: {self.score}', True, WHITE)
             self.screen.blit(score_text, (10, 10))
 
-            #Dibujar al jugador:
+            #Dibujar el tiempo restante del power-up:
+            if self.power_up_active:
+                remaining_time=(self.power_up_dur-(pygame.time.get_ticks()-self.power_up_timer))//1000
+                power_up_text=self.font.render(f'Power-up:{remaining_time}s', True, YELLOW)
+                self.screen.blit(power_up_text, (650, 10))
+
+            #Dibujar los personajes:
             self.player.draw(self.screen)
-            self.blinky.draw(self.screen)
-            self.pinky.draw(self.screen)
-            self.inky.draw(self.screen)
-            self.clyde.draw(self.screen)
+            for ghost in self.ghosts:
+                ghost.draw(self.screen)
 
         #Acutializar la pantalla:
         pygame.display.flip()

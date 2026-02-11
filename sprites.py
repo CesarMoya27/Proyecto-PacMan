@@ -13,19 +13,23 @@ class Wall:
         self.rect=pygame.Rect(x*WALL_SIZE, y*WALL_SIZE, WALL_SIZE, WALL_SIZE)
     
     def draw(self, screen):
-        pygame.draw.rect(screen, WALL_COLOR, self.rect)
+        pygame.draw.rect(screen, BLUE, self.rect)
 
 class Coin:
-    def __init__(self, x, y):
+    def __init__(self, x, y, big=False):
         #Posicion de la moneda:
         self.x=x*WALL_SIZE+WALL_SIZE/2
         self.y=y*WALL_SIZE+WALL_SIZE/2
+        self.big=big
 
-        self.rect=pygame.Rect(x*COIN_SIZE, y*COIN_SIZE, COIN_SIZE, COIN_SIZE)
+        if not big:
+            self.rect=pygame.Rect(x*COIN_SIZE, y*COIN_SIZE, COIN_SIZE, COIN_SIZE)
+        else:
+            self.rect=pygame.Rect(x*B_COIN_SIZE, y*B_COIN_SIZE, B_COIN_SIZE, B_COIN_SIZE)
         self.rect.center=(self.x, self.y)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, COIN_COLOR, self.rect)
+        pygame.draw.rect(screen, NARANJA, self.rect)
 
 class Jugador:
     def __init__(self, x, y):
@@ -109,13 +113,13 @@ class Jugador:
         keys=pygame.key.get_pressed()
 
         if keys[pygame.K_RIGHT]:
-            self.dx=SPEED
+            self.dx=PLAYER_SPEED
         elif keys[pygame.K_LEFT]:
-            self.dx=-SPEED
+            self.dx=-PLAYER_SPEED
         elif keys[pygame.K_DOWN]:
-            self.dy=SPEED
+            self.dy=PLAYER_SPEED
         elif keys[pygame.K_UP]:
-            self.dy=-SPEED
+            self.dy=-PLAYER_SPEED
 
         if self.dx<0:
             self.flip=True
@@ -158,16 +162,28 @@ class Jugador:
 
 class Blinky:
     def __init__(self, x, y):
-        self.x=x*WALL_SIZE+WALL_SIZE/2
-        self.y=y*WALL_SIZE+WALL_SIZE/2
-        self.animacion=[]
+        self.initial_x=x*WALL_SIZE+WALL_SIZE/2
+        self.initial_y=y*WALL_SIZE+WALL_SIZE/2
+        self.x=self.initial_x
+        self.y=self.initial_y
 
+        self.animacion_normal=[]
+        self.animacion_vulnerable=[]
+
+        self.visible=True
         self.flip=False
+        self.vulnerable=False
+        self.respawn_timer=0
 
         for i in range(2):
             self.ruta_temp=ASSETS_DIR/"blinky"/f"blinky{i+1}.png"
             self.image=load_image(self.ruta_temp)
-            self.animacion.append(self.image)
+            self.animacion_normal.append(self.image)
+
+        for i in range(2):
+            self.ruta_temp=ASSETS_DIR/"blue"/f"blue{i+1}.png"
+            self.image=load_image(self.ruta_temp)
+            self.animacion_vulnerable.append(self.image)       
 
         self.rect=self.image.get_rect(center=(self.x, self.y))
 
@@ -180,13 +196,35 @@ class Blinky:
         #Variables de movimiento:
         self.direction=random.randint(0,3)
         self.dir_timer=pygame.time.get_ticks()
+    
+    def vulnerable_state(self, vulnerable):
+        #Cambiar el estado de vulnerabilidad del fantasma:
+        self.vulnerable=vulnerable
+    
+    #Ocultar al fantasma temporalmente:
+    def hide(self):
+        self.visible=False
+        self.respawn_timer=pygame.time.get_ticks()
+    
+    def respawn(self):
+        self.x=self.initial_x
+        self.y=self.initial_y
+        self.rect.center=(self.x, self.y)
+        self.visible=True
+        self.vulnerable=False
 
     def change_dir(self):
         #Cambiar la direccion del fantasma aleatoriamente:
         self.direction=random.randint(0,3)
         self.dir_timer=pygame.time.get_ticks()
 
-    def move(self, walls): 
+    def move(self, walls):
+        if not self.visible:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>GHOST_RESPAWN_TIME:
+                self.respawn()
+            return
+
         #Mover fantasma y manejar las colisiones:
         #Cambiar dirección después de cierto tiempo:
         current_time=pygame.time.get_ticks()
@@ -271,32 +309,49 @@ class Blinky:
 
     def update(self, walls):
         cooldown=100
-        self.image=self.animacion[self.indice_frame]
+        if not self.vulnerable:
+            self.image=self.animacion_normal[self.indice_frame]
+        else:
+            self.image=self.animacion_vulnerable[self.indice_frame]
+
         if pygame.time.get_ticks()-self.update_time>=cooldown:
             self.indice_frame+=1
             self.update_time=pygame.time.get_ticks()
 
-        if self.indice_frame>=len(self.animacion):
+        if self.indice_frame>=len(self.animacion_normal):
             self.indice_frame=0
 
         self.move(walls)
 
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        screen.blit(image_flip, self.rect)
+        if self.visible:
+            screen.blit(image_flip, self.rect)
 
 class Pinky:
     def __init__(self, x, y):
-        self.x=x*WALL_SIZE+WALL_SIZE/2
-        self.y=y*WALL_SIZE+WALL_SIZE/2
-        self.animacion=[]
+        self.initial_x=x*WALL_SIZE+WALL_SIZE/2
+        self.initial_y=y*WALL_SIZE+WALL_SIZE/2
+        self.x=self.initial_x
+        self.y=self.initial_y
+
+        self.animacion_normal=[]
+        self.animacion_vulnerable=[]
 
         self.flip=False
+        self.vulnerable=False
+        self.visible=True
+        self.respawn_timer=0
 
         for i in range(2):
             self.ruta_temp=ASSETS_DIR/"pinky"/f"pinky{i+1}.png"
             self.image=load_image(self.ruta_temp)
-            self.animacion.append(self.image)
+            self.animacion_normal.append(self.image)
+
+        for i in range(2):
+            self.ruta_temp=ASSETS_DIR/"blue"/f"blue{i+1}.png"
+            self.image=load_image(self.ruta_temp)
+            self.animacion_vulnerable.append(self.image)
 
         self.rect=self.image.get_rect(center=(self.x, self.y))
 
@@ -309,13 +364,33 @@ class Pinky:
         #Variables de movimiento:
         self.direction=(random.randint(0,3)-1)%4
         self.dir_timer=pygame.time.get_ticks()
+    
+    def vulnerable_state(self, vulnerable):
+        self.vulnerable=vulnerable
+
+    def hide(self):
+        self.visible=False
+        self.respawn_timer=pygame.time.get_ticks()
+    
+    def respawn(self):
+        self.x=self.initial_x
+        self.y=self.initial_y
+        self.rect.center=(self.x, self.y)
+        self.visible=True
+        self.vulnerable=False
 
     def change_dir(self):
         #Cambiar la direccion del fantasma aleatoriamente:
         self.direction=(random.randint(0,3)-1)%4
         self.dir_timer=pygame.time.get_ticks()
 
-    def move(self, walls): 
+    def move(self, walls):
+        if not self.visible:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>GHOST_RESPAWN_TIME:
+                self.respawn()
+            return
+ 
         #Mover fantasma y manejar las colisiones:
         #Cambiar dirección después de cierto tiempo:
         current_time=pygame.time.get_ticks()
@@ -400,32 +475,49 @@ class Pinky:
 
     def update(self, walls):
         cooldown=100
-        self.image=self.animacion[self.indice_frame]
+        if not self.vulnerable:
+            self.image=self.animacion_normal[self.indice_frame]
+        else:
+            self.image=self.animacion_vulnerable[self.indice_frame]
+
         if pygame.time.get_ticks()-self.update_time>=cooldown:
             self.indice_frame+=1
             self.update_time=pygame.time.get_ticks()
 
-        if self.indice_frame>=len(self.animacion):
+        if self.indice_frame>=len(self.animacion_normal):
             self.indice_frame=0
 
         self.move(walls)
 
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        screen.blit(image_flip, self.rect)
+        if self.visible:
+            screen.blit(image_flip, self.rect)
 
 class Inky:
     def __init__(self, x, y):
-        self.x=x*WALL_SIZE+WALL_SIZE/2
-        self.y=y*WALL_SIZE+WALL_SIZE/2
-        self.animacion=[]
+        self.initial_x=x*WALL_SIZE+WALL_SIZE/2
+        self.initial_y=y*WALL_SIZE+WALL_SIZE/2
+        self.x=self.initial_x
+        self.y=self.initial_y
+
+        self.animacion_normal=[]
+        self.animacion_vulnerable=[]
 
         self.flip=False
+        self.vulnerable=False
+        self.visible=True
+        self.respawn_timer=0
 
         for i in range(2):
             self.ruta_temp=ASSETS_DIR/"inky"/f"inky{i+1}.png"
             self.image=load_image(self.ruta_temp)
-            self.animacion.append(self.image)
+            self.animacion_normal.append(self.image)
+        
+        for i in range(2):
+            self.ruta_temp=ASSETS_DIR/"blue"/f"blue{i+1}.png"
+            self.image=load_image(self.ruta_temp)
+            self.animacion_vulnerable.append(self.image)
 
         self.rect=self.image.get_rect(center=(self.x, self.y))
 
@@ -439,6 +531,20 @@ class Inky:
         self.direction=random.randint(0,3)
         self.dir_timer=pygame.time.get_ticks()
 
+    def vulnerable_state(self, vulnerable):
+        self.vulnerable=vulnerable
+
+    def hide(self):
+        self.visible=False
+        self.respawn_timer=pygame.time.get_ticks()
+    
+    def respawn(self):
+        self.x=self.initial_x
+        self.y=self.initial_y
+        self.rect.center=(self.x, self.y)
+        self.visible=True
+        self.vulnerable=False
+
     def change_dir(self):
         #Cambiar la direccion del fantasma aleatoriamente:
         if self.direction in [RIGHT, LEFT]:
@@ -447,7 +553,13 @@ class Inky:
             self.direction=random.choice([RIGHT, LEFT])
         self.dir_timer=pygame.time.get_ticks()
 
-    def move(self, walls): 
+    def move(self, walls):
+        if not self.visible:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>GHOST_RESPAWN_TIME:
+                self.respawn()
+            return
+
         #Mover fantasma y manejar las colisiones:
         #Cambiar dirección después de cierto tiempo:
         current_time=pygame.time.get_ticks()
@@ -532,32 +644,48 @@ class Inky:
 
     def update(self, walls):
         cooldown=100
-        self.image=self.animacion[self.indice_frame]
+        if not self.vulnerable:
+            self.image=self.animacion_normal[self.indice_frame]
+        else:
+            self.image=self.animacion_vulnerable[self.indice_frame]
         if pygame.time.get_ticks()-self.update_time>=cooldown:
             self.indice_frame+=1
             self.update_time=pygame.time.get_ticks()
 
-        if self.indice_frame>=len(self.animacion):
+        if self.indice_frame>=len(self.animacion_normal):
             self.indice_frame=0
 
         self.move(walls)
 
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        screen.blit(image_flip, self.rect)
+        if self.visible:
+            screen.blit(image_flip, self.rect)
 
 class Clyde:
     def __init__(self, x, y):
-        self.x=x*WALL_SIZE+WALL_SIZE/2
-        self.y=y*WALL_SIZE+WALL_SIZE/2
-        self.animacion=[]
+        self.initial_x=x*WALL_SIZE+WALL_SIZE/2
+        self.initial_y=y*WALL_SIZE+WALL_SIZE/2
+        self.x=self.initial_x
+        self.y=self.initial_y
+
+        self.animacion_normal=[]
+        self.animacion_vulnerable=[]
 
         self.flip=False
+        self.vulnerable=False
+        self.visible=True
+        self.respawn_timer=0
 
         for i in range(2):
             self.ruta_temp=ASSETS_DIR/"clyde"/f"clyde{i+1}.png"
             self.image=load_image(self.ruta_temp)
-            self.animacion.append(self.image)
+            self.animacion_normal.append(self.image)
+        
+        for i in range(2):
+            self.ruta_temp=ASSETS_DIR/"blue"/f"blue{i+1}.png"
+            self.image=load_image(self.ruta_temp)
+            self.animacion_vulnerable.append(self.image)
 
         self.rect=self.image.get_rect(center=(self.x, self.y))
 
@@ -571,12 +699,32 @@ class Clyde:
         self.direction=(random.randint(0,3)-1)%4
         self.dir_timer=pygame.time.get_ticks()
 
+    def vulnerable_state(self, vulnerable):
+        self.vulnerable=vulnerable
+
+    def hide(self):
+        self.visible=False
+        self.respawn_timer=pygame.time.get_ticks()
+    
+    def respawn(self):
+        self.x=self.initial_x
+        self.y=self.initial_y
+        self.rect.center=(self.x, self.y)
+        self.visible=True
+        self.vulnerable=False
+
     def change_dir(self):
         #Cambiar la direccion del fantasma aleatoriamente:
         self.direction=(random.randint(0,3)-1)%4
         self.dir_timer=pygame.time.get_ticks()
 
     def move(self, walls): 
+        if not self.visible:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>GHOST_RESPAWN_TIME:
+                self.respawn()
+            return
+
         #Mover fantasma y manejar las colisiones:
         #Cambiar dirección después de cierto tiempo:
         current_time=pygame.time.get_ticks()
@@ -661,16 +809,21 @@ class Clyde:
 
     def update(self, walls):
         cooldown=100
-        self.image=self.animacion[self.indice_frame]
+        if not self.vulnerable:
+            self.image=self.animacion_normal[self.indice_frame]
+        else:
+            self.image=self.animacion_vulnerable[self.indice_frame]
+
         if pygame.time.get_ticks()-self.update_time>=cooldown:
             self.indice_frame+=1
             self.update_time=pygame.time.get_ticks()
 
-        if self.indice_frame>=len(self.animacion):
+        if self.indice_frame>=len(self.animacion_normal):
             self.indice_frame=0
         
         self.move(walls)
 
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        screen.blit(image_flip, self.rect)
+        if self.visible:
+            screen.blit(image_flip, self.rect)
