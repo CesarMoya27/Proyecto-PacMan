@@ -33,14 +33,21 @@ class Coin:
 
 class Jugador:
     def __init__(self, x, y):
-        self.x=x*WALL_SIZE+WALL_SIZE/2
-        self.y=y*WALL_SIZE+WALL_SIZE/2
+        self.initial_x=x*WALL_SIZE+WALL_SIZE/2
+        self.initial_y=y*WALL_SIZE+WALL_SIZE/2
+        self.x=self.initial_x
+        self.y=self.initial_y
+
         self.animacion=[]
 
         self.is_moving=False
         self.was_moving=False
 
         self.flip=False
+        self.life=PLAYER_LIFES
+
+        self.can_move=True
+        self.respawn_timer=0
 
         for i in range(3):
             self.ruta_temp=PLAYER_DIR/f"player{i+1}.png"
@@ -56,6 +63,12 @@ class Jugador:
         #Almacenamiento de la hora actual (milisegundos) desde que se inicia el juego:
         self.update_time=pygame.time.get_ticks()
 
+    def respawn(self):
+        self.x=self.initial_x
+        self.y=self.initial_y
+        self.rect.center=(self.x, self.y)
+        self.can_move=False
+        self.respawn_timer=pygame.time.get_ticks()
 
     def move(self, walls):
         #Intentar movimiento en x:
@@ -109,17 +122,16 @@ class Jugador:
         #Reiniciar la velocidad:
         self.dx=0
         self.dy=0
-
-        keys=pygame.key.get_pressed()
-
-        if keys[pygame.K_RIGHT]:
-            self.dx=PLAYER_SPEED
-        elif keys[pygame.K_LEFT]:
-            self.dx=-PLAYER_SPEED
-        elif keys[pygame.K_DOWN]:
-            self.dy=PLAYER_SPEED
-        elif keys[pygame.K_UP]:
-            self.dy=-PLAYER_SPEED
+        if self.can_move:
+            keys=pygame.key.get_pressed()
+            if keys[pygame.K_RIGHT]:
+                self.dx=PLAYER_SPEED
+            elif keys[pygame.K_LEFT]:
+                self.dx=-PLAYER_SPEED
+            elif keys[pygame.K_DOWN]:
+                self.dy=PLAYER_SPEED
+            elif keys[pygame.K_UP]:
+                self.dy=-PLAYER_SPEED
 
         if self.dx<0:
             self.flip=True
@@ -153,8 +165,18 @@ class Jugador:
 
         if self.indice_frame>=len(self.animacion):
             self.indice_frame=0
+        
+        if not self.can_move:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>PLAYER_RESPAWN_TIME:
+                self.can_move=True
 
         self.move(wall)
+    
+    def draw_lifes(self, screen):
+        for i in range (self.life):
+            if self.life>=1:
+                screen.blit(LIFE, (5+i*40, 575))
 
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
@@ -173,6 +195,9 @@ class Blinky:
         self.visible=True
         self.flip=False
         self.vulnerable=False
+        self.can_move=True
+        self.dead=False
+
         self.respawn_timer=0
 
         for i in range(2):
@@ -204,12 +229,17 @@ class Blinky:
     #Ocultar al fantasma temporalmente:
     def hide(self):
         self.visible=False
+        self.rect.center=(1000, 1000)
         self.respawn_timer=pygame.time.get_ticks()
     
     def respawn(self):
         self.x=self.initial_x
         self.y=self.initial_y
         self.rect.center=(self.x, self.y)
+
+        self.respawn_timer=pygame.time.get_ticks()
+
+        self.can_move=False
         self.visible=True
         self.vulnerable=False
 
@@ -235,14 +265,25 @@ class Blinky:
         self.dx=0
         self.dy=0
 
-        if self.direction==RIGHT:
-            self.dx=GHOST_SPEED
-        elif self.direction==LEFT:
-            self.dx=-GHOST_SPEED
-        elif self.direction==UP:
-            self.dy=-GHOST_SPEED
-        elif self.direction==DOWN:
-            self.dy=GHOST_SPEED
+        if self.can_move:
+            if not self.vulnerable:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED
+            else:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED_V
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED_V
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED_V
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED_V
 
         #Comprobar la colision en la posicion:
         new_rect=self.rect.copy()
@@ -323,10 +364,17 @@ class Blinky:
 
         self.move(walls)
 
+        if not self.can_move and self.dead:
+            self.can_move=True
+            self.dead=False
+        elif not self.can_move:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>=PLAYER_RESPAWN_TIME:
+                self.can_move=True
+
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        if self.visible:
-            screen.blit(image_flip, self.rect)
+        screen.blit(image_flip, self.rect)
 
 class Pinky:
     def __init__(self, x, y):
@@ -341,6 +389,9 @@ class Pinky:
         self.flip=False
         self.vulnerable=False
         self.visible=True
+        self.can_move=True
+        self.dead=False
+
         self.respawn_timer=0
 
         for i in range(2):
@@ -370,12 +421,17 @@ class Pinky:
 
     def hide(self):
         self.visible=False
+        self.rect.center=(1000, 1000)
         self.respawn_timer=pygame.time.get_ticks()
     
     def respawn(self):
         self.x=self.initial_x
         self.y=self.initial_y
         self.rect.center=(self.x, self.y)
+
+        self.respawn_timer=pygame.time.get_ticks()
+
+        self.can_move=False
         self.visible=True
         self.vulnerable=False
 
@@ -401,14 +457,25 @@ class Pinky:
         self.dx=0
         self.dy=0
 
-        if self.direction==RIGHT:
-            self.dx=GHOST_SPEED
-        elif self.direction==LEFT:
-            self.dx=-GHOST_SPEED
-        elif self.direction==UP:
-            self.dy=-GHOST_SPEED
-        elif self.direction==DOWN:
-            self.dy=GHOST_SPEED
+        if self.can_move:
+            if not self.vulnerable:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED
+            else:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED_V
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED_V
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED_V
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED_V
 
         #Comprobar la colision en la posicion:
         new_rect=self.rect.copy()
@@ -489,10 +556,17 @@ class Pinky:
 
         self.move(walls)
 
+        if not self.can_move and self.dead:
+            self.can_move=True
+            self.dead=False
+        elif not self.can_move:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>=PLAYER_RESPAWN_TIME:
+                self.can_move=True
+
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        if self.visible:
-            screen.blit(image_flip, self.rect)
+        screen.blit(image_flip, self.rect)
 
 class Inky:
     def __init__(self, x, y):
@@ -507,6 +581,9 @@ class Inky:
         self.flip=False
         self.vulnerable=False
         self.visible=True
+        self.can_move=True
+        self.dead=False
+
         self.respawn_timer=0
 
         for i in range(2):
@@ -536,12 +613,17 @@ class Inky:
 
     def hide(self):
         self.visible=False
+        self.rect.center=(1000, 1000)
         self.respawn_timer=pygame.time.get_ticks()
     
     def respawn(self):
         self.x=self.initial_x
         self.y=self.initial_y
         self.rect.center=(self.x, self.y)
+
+        self.respawn_timer=pygame.time.get_ticks()
+        
+        self.can_move=False
         self.visible=True
         self.vulnerable=False
 
@@ -570,14 +652,25 @@ class Inky:
         self.dx=0
         self.dy=0
 
-        if self.direction==RIGHT:
-            self.dx=GHOST_SPEED
-        elif self.direction==LEFT:
-            self.dx=-GHOST_SPEED
-        elif self.direction==UP:
-            self.dy=-GHOST_SPEED
-        elif self.direction==DOWN:
-            self.dy=GHOST_SPEED
+        if self.can_move:
+            if not self.vulnerable:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED
+            else:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED_V
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED_V
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED_V
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED_V
 
         #Comprobar la colision en la posicion:
         new_rect=self.rect.copy()
@@ -657,10 +750,17 @@ class Inky:
 
         self.move(walls)
 
+        if not self.can_move and self.dead:
+            self.can_move=True
+            self.dead=False
+        elif not self.can_move:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>=PLAYER_RESPAWN_TIME:
+                self.can_move=True
+
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        if self.visible:
-            screen.blit(image_flip, self.rect)
+        screen.blit(image_flip, self.rect)
 
 class Clyde:
     def __init__(self, x, y):
@@ -675,6 +775,9 @@ class Clyde:
         self.flip=False
         self.vulnerable=False
         self.visible=True
+        self.can_move=True
+        self.dead=False
+
         self.respawn_timer=0
 
         for i in range(2):
@@ -704,12 +807,17 @@ class Clyde:
 
     def hide(self):
         self.visible=False
+        self.rect.center=(1000, 1000)
         self.respawn_timer=pygame.time.get_ticks()
     
     def respawn(self):
         self.x=self.initial_x
         self.y=self.initial_y
         self.rect.center=(self.x, self.y)
+
+        self.respawn_timer=pygame.time.get_ticks()
+
+        self.can_move=False
         self.visible=True
         self.vulnerable=False
 
@@ -735,14 +843,25 @@ class Clyde:
         self.dx=0
         self.dy=0
 
-        if self.direction==RIGHT:
-            self.dx=GHOST_SPEED
-        elif self.direction==LEFT:
-            self.dx=-GHOST_SPEED
-        elif self.direction==UP:
-            self.dy=-GHOST_SPEED
-        elif self.direction==DOWN:
-            self.dy=GHOST_SPEED
+        if self.can_move:
+            if not self.vulnerable:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED
+            else:
+                if self.direction==RIGHT:
+                    self.dx=GHOST_SPEED_V
+                elif self.direction==LEFT:
+                    self.dx=-GHOST_SPEED_V
+                elif self.direction==UP:
+                    self.dy=-GHOST_SPEED_V
+                elif self.direction==DOWN:
+                    self.dy=GHOST_SPEED_V
 
         #Comprobar la colision en la posicion:
         new_rect=self.rect.copy()
@@ -823,7 +942,14 @@ class Clyde:
         
         self.move(walls)
 
+        if not self.can_move and self.dead:
+            self.can_move=True
+            self.dead=False
+        elif not self.can_move:
+            current_time=pygame.time.get_ticks()
+            if current_time-self.respawn_timer>=PLAYER_RESPAWN_TIME:
+                self.can_move=True
+
     def draw(self, screen):
         image_flip=pygame.transform.flip(self.image, self.flip, False)
-        if self.visible:
-            screen.blit(image_flip, self.rect)
+        screen.blit(image_flip, self.rect)

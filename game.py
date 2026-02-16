@@ -41,7 +41,7 @@ class Game:
 
         #Fuente para el texto:
         self.font=pygame.font.Font(None, 36)
-        self.font_big=pygame.font.Font(None, 74)
+        self.font_big=pygame.font.Font(None, 73)
 
         #Iniciar la música:
         self.music.play(-1)
@@ -49,13 +49,13 @@ class Game:
     #Pantalla de inicio:
     def show_intro_screen(self):
         title_text=load_image(str(TITLE_DIR))
-        title_text=escalar_img(title_text, 0.4)
+        title_text=pygame.transform.scale(title_text, (ANCHO_VENT, ALTO_VENT))
         start_text=self.font.render('Presiona ESPACIO para Comenzar', True, WHITE)
         controls_text=self.font.render('Usa las FLECHAS para moverte', True, WHITE)
 
-        title_rect=title_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/3))
-        start_rect=start_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
-        controls_rect=controls_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/3))
+        title_rect=title_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
+        start_rect=start_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/4.5))
+        controls_rect=controls_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/7))
 
         self.screen.fill(BLACK)
         self.screen.blit(title_text, title_rect)
@@ -64,13 +64,14 @@ class Game:
     
     #Pantalla de game over:
     def show_game_over_screen(self):
-        game_over_text=self.font_big.render('JUEGO TERMINADO', True, RED)
+        game_over_text=load_image(str(LOSE_DIR))
+        game_over_text=pygame.transform.scale(game_over_text, (ANCHO_VENT, ALTO_VENT))
         score_text=self.font_big.render(f'Puntaje: {self.score}', True, WHITE)
         restart_text=self.font.render('Presione ESPACIO para jugar de nuevo', True, WHITE)
 
-        game_over_rect=game_over_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/3))
-        score_rect=score_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
-        restart_rect=restart_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/3))   
+        game_over_rect=game_over_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
+        score_rect=score_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/4.8))
+        restart_rect=restart_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/7))   
 
         self.screen.fill(BLACK)
         self.screen.blit(game_over_text, game_over_rect)
@@ -79,13 +80,14 @@ class Game:
 
     #Pantalla de victoria:
     def show_victory_screen(self):
-        victory_text=self.font_big.render('VICTORIA', True, YELLOW)
+        victory_text=load_image(str(WIN_DIR))
+        victory_text=pygame.transform.scale(victory_text, (ANCHO_VENT, ALTO_VENT))
         score_text=self.font_big.render(f'Puntaje: {self.score}', True, WHITE)
         restart_text=self.font.render('Presione ESPACIO para jugar de nuevo', True, WHITE)
 
-        victory_rect=victory_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/3))
-        score_rect=score_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
-        restart_rect=restart_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/3))   
+        victory_rect=victory_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/2))
+        score_rect=score_text.get_rect(center=(ANCHO_VENT/2, ALTO_VENT/4.6))
+        restart_rect=restart_text.get_rect(center=(ANCHO_VENT/2, 2*ALTO_VENT/7))   
 
         self.screen.fill(BLACK)
         self.screen.blit(victory_text, victory_rect)
@@ -130,7 +132,7 @@ class Game:
     def update_power_up(self):
         if self.power_up_active:
             current_time=pygame.time.get_ticks()
-            if current_time-self.power_up_timer>self.power_up_dur:
+            if current_time-self.power_up_timer>=self.power_up_dur:
                 self.power_up_active=False
                 for ghost in self.ghosts:
                     ghost.vulnerable_state(False)
@@ -187,17 +189,25 @@ class Game:
             if self.player.rect.colliderect(ghost.rect):
                 if ghost.vulnerable:
                     ghost.hide()
+                    ghost.dead=True
                 else:
-                    self.game_state=GAME_OVER
-                    if not self.dead:
-                        self.dies.play()
-                        self.dead=True
+                    if self.player.life:
+                        self.player.life-=1
+                        self.player.respawn()
+                        for ghost in self.ghosts:
+                            ghost.respawn()
+
+        if self.player. life==0:
+            self.game_state=GAME_OVER
+            if not self.dead:
+                self.dies.play()
+                self.dead=True       
 
     def draw(self):
         #Llenar de negro el fondo:
         self.screen.fill(BLACK)
 
-        #Dibujar la pantalla de intro:
+        #Dibujar las pantallas:
         if self.game_state==INTRO:
             self.show_intro_screen()
         elif self.game_state==GAME_OVER:
@@ -216,6 +226,9 @@ class Game:
             #Dibujar el puntaje en pantalla:
             score_text=self.font.render(f'Puntaje: {self.score}', True, WHITE)
             self.screen.blit(score_text, (10, 10))
+
+            #Dibujar la vida en pantalla:
+            self.player.draw_lifes(self.screen)
 
             #Dibujar el tiempo restante del power-up:
             if self.power_up_active:
