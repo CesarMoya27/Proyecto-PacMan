@@ -102,13 +102,13 @@ class Game(GameBase):
                 elif col=="0":
                     self.coins.append(Coin(i_col, i_fila))
                 elif col=="B":
-                    self.blinky=Ghost(i_col, i_fila)
+                    self.blinky=Ghost(i_col, i_fila, 1)
                 elif col=="R":
-                    self.pinky=Ghost(i_col, i_fila)
+                    self.pinky=Ghost(i_col, i_fila, 2)
                 elif col=="I":
-                    self.inky=Ghost(i_col, i_fila)                                  
+                    self.inky=Ghost(i_col, i_fila, 3)                                  
                 elif col=="C":
-                    self.clyde=Ghost(i_col, i_fila)
+                    self.clyde=Ghost(i_col, i_fila, 4)
                 elif col=="M":
                     self.coins.append(Coin(i_col, i_fila, True))
 
@@ -196,43 +196,43 @@ class Game(GameBase):
                 self.dies.play()
                 self.dead=True       
 
-    def render(self, surface: pygame.Surface):
+    def render(self):
         #Llenar de negro el fondo:
-        surface.fill(BLACK)
+        self.surface.fill(BLACK)
 
         #Dibujar las pantallas:
         if self.game_state==INTRO:
-            self.show_intro_screen(surface)
+            self.show_intro_screen(self.surface)
         elif self.game_state==GAME_OVER:
-            self.show_game_over_screen(surface)
+            self.show_game_over_screen(self.surface)
         elif self.game_state==VICTORY:
-            self.show_victory_screen(surface)
+            self.show_victory_screen(self.surface)
         elif self.game_state==PLAYING:
             #Dibujar las paredes:
             for wall in self.walls:
-                wall.draw(surface)
+                wall.draw(self.surface)
             
             #Dibujar las monedas:
             for coin in self.coins:
-                coin.draw(surface)
+                coin.draw(self.surface)
 
             #Dibujar el puntaje en pantalla:
             score_text=self.font.render(f'Puntaje: {self.score}', True, WHITE)
-            surface.blit(score_text, (10, 10))
+            self.surface.blit(score_text, (10, 10))
 
             #Dibujar la vida en pantalla:
-            self.player.draw_lifes(surface)
+            self.player.draw_lifes(self.surface)
 
             #Dibujar el tiempo restante del power-up:
             if self.power_up_active:
                 remaining_time=max(0, int(self.power_up_timer))
                 power_up_text=self.font.render(f'Power-up:{remaining_time}s', True, YELLOW)
-                surface.blit(power_up_text, (BASE_WIDTH-150, 10))
+                self.surface.blit(power_up_text, (BASE_WIDTH-150, 10))
 
             #Dibujar los personajes:
-            self.player.draw(surface)
+            self.player.draw(self.surface)
             for ghost in self.ghosts:
-                ghost.draw(surface)
+                ghost.draw(self.surface)
                 
     def run_independently(self):
         return super().run_independently()
