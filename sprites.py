@@ -153,6 +153,7 @@ class Jugador:
 
         self.handle_input(dt)
 
+        print(int(self.indice_frame))
         self.image=self.animacion[int(self.indice_frame)]
         self.indice_frame+=10*dt
         
@@ -215,7 +216,9 @@ class Ghost:
         for i in range(2):
             self.ruta_temp=ASSETS_DIR/"blue"/f"blue{i+1}.png"
             self.image=load_image(self.ruta_temp)
-            self.animacion_vulnerable.append(self.image)       
+            self.animacion_vulnerable.append(self.image)     
+
+        print(self.animacion_normal)  
 
         self.rect=self.image.get_rect(center=(self.x, self.y))
 
