@@ -247,3 +247,4 @@ class Game(GameBase):
                 
     def run_independently(self):
         return super().run_independently()
+
